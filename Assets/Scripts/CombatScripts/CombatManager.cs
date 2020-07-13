@@ -15,7 +15,7 @@ public class CombatManager : MonoBehaviour
         instance = this;
     }
 
-    public void PrintCombatAssessment()
+    public void PrintPreCombatAssessment()
     {
         if (m_party1 == null || m_party2 == null)
         {
@@ -23,6 +23,60 @@ public class CombatManager : MonoBehaviour
         }
 
         string finalText = m_party1.partyName + ": " + m_party1.GetCombatants().Count + " members.\n" + m_party2.partyName + ": " + m_party2.GetCombatants().Count + " members.";
+        MainTextManager.instance.AppendMainText(finalText);
+    }
+    public void PrintPostCombatAssessment(int p1Orig, int p2Orig)
+    {
+        if (m_party1 == null || m_party2 == null)
+        {
+            return;
+        }
+
+        int numP1 = m_party1.GetCombatants().Count;
+        int numP2 = m_party2.GetCombatants().Count;
+
+        string finalText = "";
+
+        // Check 1: Party dead
+        if (numP1 == 0)
+        {
+            finalText += "Your party has been defeated. All lie dead.";
+        }
+        else if (numP2 == 0)
+        {
+            finalText += "Your enemies lie dead at your feet. You are victorious.";
+        }
+
+        // Check 2: Toll on party
+        if (numP1 > 0)
+        {
+            if (finalText != "")
+            {
+                finalText += "\n";
+            }
+
+            int numDead = p1Orig - numP1;
+            float perDead = ((float)numDead/(float)p1Orig) * 100;
+
+            // 0 Units lost.
+            if (perDead == 0)
+            {
+                finalText += "All of your " + numP1 + " fighters remain alive.";
+            }
+            // Less than half dead
+            else if (perDead < 50)
+            {
+                finalText += "You have sutained casualties. " + numDead + " of your units perished. " + numP1 + " remain able to fight.";
+            }
+            // More than half dead
+            else
+            {
+                finalText += "You have taken heavy casualties. " + numDead + " lie dead. Only " + numP1 + " remain standing.";
+            }
+
+            finalText += "\n" + numP2 + " enemies remain.";
+        }
+
 
         MainTextManager.instance.AppendMainText(finalText);
     }
@@ -46,10 +100,14 @@ public class CombatManager : MonoBehaviour
 
     void ResolveCombatRound()
     {
-        PrintCombatAssessment();
+        MainTextManager.instance.AppendMainText("Combat ensues!");
+
+        PrintPreCombatAssessment();
 
         List<Bod> p1Combatants = m_party1.GetCombatants();
+        int numP1Orig = p1Combatants.Count;
         List<Bod> p2Combatants = m_party2.GetCombatants();
+        int numP2Orig = p2Combatants.Count;
 
         int index1 = 0;
         int index2 = 0;
@@ -81,11 +139,20 @@ public class CombatManager : MonoBehaviour
             index1 ++;
             index2 ++;
         }
+
+        PrintPostCombatAssessment(numP1Orig, numP2Orig);
     }
 
     void BodCombat(Bod b1, Bod b2)
     {
         string finalText = b1.fullName + " vs. " + b2.fullName;
+
+        // Determine Advantage/Disadvantage
+        int advVal = BodManager.instance.GetPersonalityTypeAdvantageValue(b1.personalityType, b2.personalityType);
+        if (advVal != 0)
+        {
+            finalText += "\nAdvantage Value: " + advVal;
+        }
 
         // Resolve turn order based on agility
         Bod first, second;
@@ -120,11 +187,10 @@ public class CombatManager : MonoBehaviour
 
     string ResolveSpeedComparison(Bod b1, Bod b2, out Bod first, out Bod second, int spBonus1 = 0, int spBonus2 = 0)
     {
-        int sp1 = RVCalc.RollD20(b1.agility + b1.fighting + spBonus1, BodManager.instance.GetPersonalityTypeAdvantageValue(b1.personalityType, b2.personalityType));
-        int sp2 = RVCalc.RollD20(b2.agility + b2.fighting + spBonus2, BodManager.instance.GetPersonalityTypeAdvantageValue(b2.personalityType, b1.personalityType));
+        int sp1 = RVCalc.RollD20(b1.agility + b1.fighting + spBonus1);
+        int sp2 = RVCalc.RollD20(b2.agility + b2.fighting + spBonus2);
 
         string finalText = b1.name + "'s speed: " + sp1 + " vs. " + b2.name + "'s speed: " + sp2;
-        finalText += "\nAdvantage Value: " + BodManager.instance.GetPersonalityTypeAdvantageValue(b1.personalityType, b2.personalityType);
 
         if (sp1 > sp2)
         {

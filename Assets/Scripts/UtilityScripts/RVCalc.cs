@@ -33,6 +33,9 @@ public class RVCalc
             int roll1 = GetVal(1, 20);
             int roll2 = GetVal(1, 20);
 
+            Debug.Log("Roll 1: " + roll1);
+            Debug.Log("Roll 2: " + roll2);
+
             if (adv)
             {
                 return Mathf.Max(roll1, roll2) + baseVal;
